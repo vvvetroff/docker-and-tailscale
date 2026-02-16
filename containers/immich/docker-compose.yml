@@ -1,0 +1,64 @@
+services:
+  immich-ts:
+    image: tailscale/tailscale:latest
+    container_name: immich-ts
+    hostname: immich
+    environment:
+      - TS_AUTHKEY=
+      - TS_STATE_DIR=/var/lib/tailscale
+      - TS_SERVE_CONFIG=/config/immich.json
+      - TS_USERSPACE=true
+    volumes:
+      - /path/to/immich/ts-config:/config
+      - /path/to/immich/ts-state:/var/lib/tailscale
+    restart: unless-stopped
+  immich-server:
+    container_name: immich_server
+    image: ghcr.io/immich-app/immich-server:release
+    volumes:
+      - /path/to/library:/usr/src/app/upload
+      - /etc/localtime:/etc/localtime:ro
+    network_mode: service:immich-ts
+    environment:
+      DB_HOSTNAME: insert-immich-database
+      DB_PASSWORD: insert-immich-database-password
+      DB_USERNAME: insert-immich-database-username
+      DB_DATABASE_NAME: insert-immich-database-name
+      REDIS_HOSTNAME: immich-redis
+    depends_on:
+      - immich-redis
+      - immich-database
+    restart: unless-stopped
+    healthcheck:
+      disable: false
+
+  immich-machine-learning:
+    container_name: immich_machine_learning
+    image: ghcr.io/immich-app/immich-machine-learning:release
+    volumes:
+      - model-cache:/cache
+    restart: unless-stopped
+    healthcheck:
+      disable: false
+
+  immich-redis:
+    container_name: immich_redis
+    image: docker.io/valkey/valkey:8-bookworm@sha256:ff21bc0f8194dc9c105b769aeabf9585fea6a8ed649c0781caeac5cb3c247884
+    healthcheck:
+      test: redis-cli ping || exit 1
+    restart: unless-stopped
+
+  immich-database:
+    container_name: immich_postgres
+    image: ghcr.io/immich-app/postgres:14-vectorchord0.3.0-pgvectors0.2.0@sha256:fa4f6e0971f454cd95fec5a9aaed2ed93d8f46725cc6bc61e0698e97dba96da1
+    environment:
+      POSTGRES_PASSWORD: insert-postgres-password
+      POSTGRES_USER: insert-postgres-username
+      POSTGRES_DB: insert-postgres-db
+      POSTGRES_INITDB_ARGS: "--data-checksums"
+    volumes:
+      - /path/to/immich/database:/var/lib/postgresql/data
+    restart: unless-stopped
+
+volumes:
+  model-cache:

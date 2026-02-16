@@ -1,0 +1,23 @@
+services:
+  portainer-ts:
+    image: tailscale/tailscale:latest
+    container_name: portainer-ts
+    hostname: portainer
+    environment:
+      - TS_AUTHKEY=
+      - TS_STATE_DIR=/var/lib/tailscale
+      - TS_SERVE_CONFIG=/config/portainer.json
+      - TS_USERSPACE=true
+    volumes:
+      - /path/to/portainer/ts-config:/config
+      - /path/to/portainer/ts-state:/var/lib/tailscale
+    restart: unless-stopped
+
+  portainer:
+    image: portainer/portainer-ce:lts
+    container_name: portainer
+    network_mode: service:portainer-ts
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - /path/to/portainer/data:/data
+    restart: always
